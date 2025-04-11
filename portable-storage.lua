@@ -9,7 +9,7 @@ end
 function checkAndDownloadBasalt()
     if not fs.exists("basalt.lua") then
         logError("Basalt not found, downloading...")
-        shell.run("wget run https://raw.githubusercontent.com/Pyroxenium/Basalt/refs/heads/master/docs/install.lua release latest.lua basalt.lua")
+        shell.run("wget run https://basalt.madefor.cc/install.lua release latest.lua basalt.lua")
         logError("Basalt installed successfully, starting the program...")
         os.sleep(3)
     end
@@ -73,33 +73,27 @@ function exportItems(itemName, amount)
 end
 
 function populateItemList(query)
-    logError("Populating item list with query: " .. query)
     itemList:clear()
-
-    if not itemLocations or type(itemLocations) ~= "table" then
-        logError("itemLocations invalid or nil")
-        return
-    end
-
     query = (query or ""):lower()
+
     for itemName, locations in pairs(itemLocations) do
         local totalCount = 0
-        for _, slots in pairs(locations or {}) do
-            for _, itemCount in pairs(slots or {}) do
-                totalCount = totalCount + (itemCount or 0)
+        for _, slots in pairs(locations) do
+            for _, itemCount in pairs(slots) do
+                totalCount = totalCount + itemCount
             end
         end
 
+        -- Remove mod ID for display
         local displayName = itemName:match("^.+:(.+)$") or itemName
         local visibleText = displayName .. " - " .. totalCount
 
-        if visibleText and type(visibleText) == "string" and itemName then
+        if visibleText:lower():find(query) then
             itemList:addItem(visibleText)
-        else
-            logError("Skipping invalid item entry: " .. tostring(itemName))
         end
     end
 end
+
 
 function createMainFrame()
     local mainFrame = basalt.createFrame()
@@ -161,15 +155,29 @@ mainFrame:addButton():setPosition(12, 15):setSize(8, 1):setText("Export")
     populateItemList("")
     mainFrame:show()
     basalt.autoUpdate()
+
 end
 
-logError("Starting pocket computer program")
+logError("Starting parallel waitForAll")
+
 parallel.waitForAll(
     function()
+        logError("Started handleIncomingMessages")
         handleIncomingMessages()
     end,
     function()
+        logError("Calling createMainFrame")
         createMainFrame()
-        requestItemList()
+        logError("GUI initialized, setting flag")
+        _G.guiReady = true
+    end,
+ function()
+    -- Wait for itemList and searchInput to be ready
+    while not (itemList and searchInput) do
+        sleep(0.1)
     end
+    logError("GUI fully ready, calling initial requestItemList")
+    requestItemList()
+end
+
 )
