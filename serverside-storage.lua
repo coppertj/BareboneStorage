@@ -202,13 +202,15 @@ function createMainFrame()
         end)
 
     -- Add button to add wireless inventory
-    local wirelessButton = mainFrame:addButton()
-        :setPosition(38, 16)
-        :setSize(10, 1)
-        :setText("Add Wireless")
-        :onClick(function()
-            addWirelessInventory()
-        end)
+mainFrame:addButton()
+    :setPosition(38, 16)
+    :setSize(12, 1)
+    :setText("Add Wireless")
+    :onClick(function()
+        addWirelessInventory()
+    end)
+
+
 
     -- Populate fullItemList with all items
     populateFullItemList()
@@ -231,7 +233,7 @@ function addWirelessInventory()
     local enderChests = {}
 
     for _, peripheralName in ipairs(peripheralList) do
-        if peripheralName:match("enderchests:ender_chest.tile_%d+") then
+if peripheralName:match("enderchests:ender_chest.tile_%d+") or peripheralName:match("^enderstorage:ender_chest") then
             table.insert(enderChests, peripheralName)
         end
     end
