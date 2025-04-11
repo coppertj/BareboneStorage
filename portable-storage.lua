@@ -9,7 +9,7 @@ end
 function checkAndDownloadBasalt()
     if not fs.exists("basalt.lua") then
         logError("Basalt not found, downloading...")
-        shell.run("wget run https://basalt.madefor.cc/install.lua release latest.lua basalt.lua")
+        shell.run("wget run https://raw.githubusercontent.com/Pyroxenium/Basalt/refs/heads/master/docs/install.lua release latest.lua basalt.lua")
         logError("Basalt installed successfully, starting the program...")
         os.sleep(3)
     end
