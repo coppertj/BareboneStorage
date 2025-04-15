@@ -1,0 +1,194 @@
+
+-- Function to print with padding and centering
+local function printCentered(y, text)
+    local w = term.getSize()
+    local x = math.floor((w - #text) / 2)
+    term.setCursorPos(x, y)
+    term.write(text)
+end
+
+-- Function to verify required slots are filled
+local function verifySlots(firstBoot)
+    local inventoryValid = true
+
+    -- Expected minimum counts
+    local expectedSlots = {
+        [1] = "Worker Turtle",
+        [2] = "Worker Turtle",
+        [3] = "Worker Turtle",
+        [4] = "Infrastructure (Chests, Modems, Cables)",
+        [5] = "Fuel Lava Enderchest",
+        [6] = "Export Enderchest"
+    }
+
+    if firstBoot then
+        expectedSlots[7] = "Disk Drive"
+        expectedSlots[8] = "Install Floppy"
+    end
+
+    for slot, label in pairs(expectedSlots) do
+        local item = turtle.getItemDetail(slot)
+        if not item then
+            print("Missing: " .. label .. " in slot " .. slot)
+            inventoryValid = false
+        else
+            print("Found: " .. label .. " in slot " .. slot .. " (" .. item.name .. ")")
+        end
+    end
+
+    return inventoryValid
+end
+
+-- Pages of the disclaimer
+local disclaimerPages = {
+    {
+        " MASTER TURTLE SETUP WARNING ",
+        "",
+        "Slot 1-3: Worker Turtles",
+        "(1 turtle per slot)",
+        "",
+        "Slot 4: Infrastructure Enderchest",
+        "(81 Chests, 81 Modems, ~200 Cables)",
+        "",
+        "Slot 5: Fuel Lava Enderchest",
+        "Slot 6: Export Enderchest",
+        "",
+        "Press any key to continue..."
+    },
+    {
+    " FIRST BOOT ONLY: ",
+    "",
+    "Slot 7: Disk Drive",
+    "Slot 8: Install Floppy Disk",
+    "",
+    "Misplacing items will result",
+    "in major errors!",
+    "",
+    "Ensure enderchests are",
+    "correctly filled.",
+    "",
+    "Press any key to begin setup..."
+    }
+}
+
+-- Display disclaimer pages one by one
+function showDisclaimerPrompt()
+    for _, page in ipairs(disclaimerPages) do
+        term.clear()
+        for i, line in ipairs(page) do
+            printCentered(i + 1, line)
+        end
+        os.pullEvent("key") -- Wait for keypress to continue
+    end
+end
+
+-- Ask if this is a first boot or re-run
+local function askFirstBoot()
+    term.clear()
+    term.setCursorPos(1, 1)
+    print("Is this the FIRST BOOT (Install programs to worker turtles)?")
+    print("[Y] Yes")
+    print("[N] No")
+
+    while true do
+        local _, key = os.pullEvent("key")
+        local choice = keys.getName(key)
+        if choice == "y" then return true end
+        if choice == "n" then return false end
+    end
+end
+
+-- Install program to a turtle using floppy disk
+local function installToTurtle(turtleSlot)
+    local diskSlot = 7
+    local floppySlot = 8
+
+    -- Place disk drive
+    turtle.select(diskSlot)
+    if not turtle.place() then
+        print("Failed to place disk drive.")
+        return false
+    end
+
+    -- Insert floppy disk into disk drive
+    turtle.select(floppySlot)
+    if not turtle.drop() then
+        print("Failed to insert floppy.")
+        turtle.select(diskSlot)
+        turtle.dig() -- Cleanup if disk insertion failed
+        return false
+    end
+
+    -- Wait a moment to ensure disk is mounted
+    sleep(1)
+
+    -- Find the drive peripheral
+    local diskSide
+    for _, side in ipairs(peripheral.getNames()) do
+        if peripheral.getType(side) == "drive" then
+            diskSide = side
+            break
+        end
+    end
+
+    if diskSide and fs.isDir("/disk") then
+        local f = fs.open("/disk/startup.lua", "w")
+        f.writeLine('shell.run("wget run https://yourdomain.com/worker_startup.lua")')
+        f.close()
+        print("Stub startup written to floppy.")
+    else
+        print("Disk drive not detected or not mounted properly.")
+    end
+
+    -- Remove floppy and disk drive
+    turtle.select(floppySlot)
+    turtle.suck()
+    turtle.select(diskSlot)
+    turtle.dig()
+
+    return true
+end
+
+
+-- Main setup flow
+local function runBootSetup()
+    showDisclaimerPrompt()
+    local isFirstBoot = askFirstBoot()
+
+    term.clear()
+    term.setCursorPos(1, 1)
+    print("Verifying slot contents...")
+    local ok = verifySlots(isFirstBoot)
+    if not ok then
+        print("")
+        print("Please fix the slot layout and restart.")
+        return false
+    end
+
+    if isFirstBoot then
+        print("")
+        print("Starting installation process...")
+        for slot = 1, 3 do
+            print("Installing to turtle from slot " .. slot)
+            turtle.select(slot)
+            if not turtle.place() then
+                print("Failed to place turtle from slot " .. slot)
+                return false
+            end
+            installToTurtle(slot)
+            turtle.dig()
+        end
+        print("All turtles have been initialized with base program.")
+    end
+
+    print("")
+    print("Setup validation complete. Proceeding to grid placement.")
+    return true
+end
+
+-- Start the setup
+if not runBootSetup() then
+    return
+end
+
+-- From here, you would begin the placement/grid/cable logic!
